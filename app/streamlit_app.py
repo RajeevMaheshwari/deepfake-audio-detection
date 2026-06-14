@@ -4,12 +4,13 @@ import sys, os, json, io, tempfile, torch, numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 import librosa, librosa.display
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.models.resnet_spec import ResNetSpec
 from src.preprocess import load_audio, preprocess_audio, extract_mel_spectrogram
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'trained_models', 'best_model.pth')
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'trained_models', 'model_config.json')
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(PROJECT_ROOT, 'trained_models', 'best_model.pth')
+CONFIG_PATH = os.path.join(PROJECT_ROOT, 'trained_models', 'model_config.json')
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 THRESHOLD = 0.0562
 
