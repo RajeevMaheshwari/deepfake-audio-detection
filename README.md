@@ -76,14 +76,6 @@ Mel-spectrograms are chosen as input to a pre-trained ResNet34, leveraging trans
 
 **Optimal decision threshold**: 0.0562 (fitted to minimize EER — critical since the default argmax threshold of 0.5 causes severe bias toward Genuine class).
 
-### Confusion Matrix
-```
-                 Predicted
-              Genuine  Deepfake
-Actual Genuine  2000      264
-       Deepfake   276     2094
-```
-
 ### Experiments Summary
 
 | Experiment | Model | Features | Accuracy | EER | F1 |
@@ -92,42 +84,6 @@ Actual Genuine  2000      264
 | 2 | RawNet2 | Raw Waveform | 72.0% | 28.0% | 72.5% |
 | **3** | **ResNet34** | **Mel-Spectrogram** | **88.3%** | **11.7%** | **88.6%** |
 | 4 | Ensemble (LCNN+ResNet34+RawNet2) | Combined | 85.9% | 14.1% | 86.2% |
-
-## Project Structure
-
-```
-deepfake-audio-detection/
-├── README.md                          # This file
-├── requirements.txt                   # Python dependencies
-├── .gitignore
-├── PLAN.md                            # Implementation plan
-├── src/
-│   ├── __init__.py
-│   ├── preprocess.py                  # Audio preprocessing & feature extraction
-│   ├── dataset.py                     # PyTorch Dataset classes
-│   ├── train.py                       # Training loop
-│   ├── evaluate.py                    # Evaluation utilities
-│   ├── utils.py                       # Metrics (EER, F1), plotting
-│   └── models/
-│       ├── __init__.py
-│       ├── lcnn.py                    # Light CNN architecture
-│       ├── rawnet2.py                 # RawNet2 (SincNet + ResBlocks)
-│       ├── resnet_spec.py             # ResNet34 on spectrograms (best model)
-│       └── ensemble.py               # Voting ensemble
-├── trained_models/
-│   ├── best_model.pth                 # Best model weights (ResNet34)
-│   └── model_config.json             # Architecture config + threshold
-├── reports/
-│   ├── performance_report.md          # Full evaluation report
-│   ├── performance_report.pdf         # PDF report
-│   ├── all_results_optimal.json       # Optimal threshold results (all models)
-│   └── figures/                       # Report figures
-├── app/
-│   └── streamlit_app.py               # Streamlit web application
-├── predict.py                         # CLI inference script
-├── final_pipeline.ipynb               # Consolidated notebook
-└── demo_script.md                     # Demo video script
-```
 
 ## Setup
 
@@ -160,23 +116,20 @@ streamlit run app/streamlit_app.py
 ```
 Opens a web interface at http://localhost:8501 where you can upload audio files and get real-time predictions.
 
-### Training
-```bash
-# Run individual experiments via Kaggle GPU (kernel pushed with kaggle CLI)
-kaggle kernels push -p kaggle_kernels/deepfake_experiments
-```
 
 ## Model Weights
 
-Download trained model from Kaggle kernel output or run training locally.
+Trained model weights are hosted on Git LFS as well as on Hugging Face and are automatically downloaded by the Streamlit app on first launch. No manual setup required.
+
+[HF Repo: rajeeev/deepfake-audio-detection](https://huggingface.co/rajeeev/deepfake-audio-detector)
 
 ## Demo Video
 
-[Link to demo video] — ~2 minute walkthrough demonstrating the web app with genuine and deepfake audio samples.
+[Link to demo video]
 
 ## Streamlit App
 
-[Deployed Streamlit app URL]
+https://deepfake-audio-detection-dawnmwe95uymoyc2jmqjh7.streamlit.app/
 
 ## License
 
