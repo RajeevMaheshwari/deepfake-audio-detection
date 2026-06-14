@@ -31,10 +31,10 @@ Audio Input (.wav/.mp3)
 Preprocessing (16kHz resample → silence trim → peak normalize → 4s pad)
     │
     ▼
-Feature Extraction (LFCC: 60 static + 60 delta + 60 delta-delta = 180-dim)
+Feature Extraction (Mel-Spectrogram: 128 mel bands × 400 time frames)
     │
     ▼
-LCNN Model (5 conv blocks → BiLSTM → FC → Softmax)
+ResNet34 Model (ImageNet pre-trained → 1-ch adaptor → 2-class FC head)
     │
     ▼
 Prediction: Genuine (Human) or Deepfake (AI-Generated) + Confidence Score
@@ -45,71 +45,83 @@ Prediction: Genuine (Human) or Deepfake (AI-Generated) + Confidence Score
 2. Trim silence (30 dB threshold)
 3. Peak normalize to ±1.0
 4. Pad/truncate to 4 seconds (64,000 samples)
-5. Extract LFCC features (Linear Frequency Cepstral Coefficients) with deltas and delta-deltas
+5. Extract Mel-spectrogram: 128 mel bands, 25ms window, 10ms hop → 128×400 matrix
 
-### Feature Extraction: LFCC
-LFCC (Linear Frequency Cepstral Coefficients) are chosen over MFCC because they better capture high-frequency artifacts produced by neural vocoders and TTS systems. The linear filterbank preserves energy at all frequencies equally, unlike the mel-scale which compresses high frequencies.
+### Feature Extraction: Mel-Spectrogram
+Mel-spectrograms are chosen as input to a pre-trained ResNet34, leveraging transfer learning from ImageNet. The 128 mel bands provide a compact yet information-rich 2D representation of audio that aligns well with CNN architectures designed for image classification.
 
-### Model Architecture: LCNN (Light CNN)
-- 5 convolutional blocks with Max-Feature-Map (MFM) activation
-- Filter progression: 32 → 64 → 128 → 64 → 64
-- Bidirectional LSTM (128 hidden) for temporal context
-- Dropout (0.5) for regularization
-- Total parameters: ~606K
-
-### Training
-- **Loss**: Weighted Cross-Entropy (weights inverse to class frequency)
-- **Optimizer**: Adam (lr=3e-4, weight_decay=1e-4)
-- **Schedule**: ReduceLROnPlateau (factor=0.5, patience=5)
-- **Batch size**: 64
-- **Early stopping**: Patience 10 on validation EER
-- **Augmentation**: White noise (30%), time stretch (20%), pitch shift (10%)
+### Model Architecture: ResNet34 (Best Model)
+- **Backbone**: ResNet34 pre-trained on ImageNet
+- **Input adaptor**: 1→3 channel repeat (128 mel bands × 400 time frames → 3 channels)
+- **Head**: 512-dim FC → Dropout(0.3) → 2-class softmax
+- **Parameters**: ~21.3M
+- **Loss**: Weighted CrossEntropy (inverse class frequency)
+- **Optimizer**: Adam (lr=1e-4, weight_decay=1e-4)
+- **Scheduler**: ReduceLROnPlateau (factor=0.5, patience=5)
+- **Batch size**: 24
+- **Early stopping**: patience=8 on validation EER
+- **Augmentation**: Additive white noise (SNR 10–20 dB, 30%), time stretch (±10%, 20%), SpecAugment (frequency + time masking)
 
 ## Results
 
+### Best Model: ResNet34 + Mel-Spectrogram (Eval — 4,634 unseen samples)
+
 | Metric | Score | Threshold | Status |
 |--------|-------|-----------|--------|
-| **Overall Accuracy** | — | ≥ 80% | — |
-| **Equal Error Rate (EER)** | — | ≤ 12% | — |
-| **F1 Score** | — | ≥ 80% | — |
-| **Genuine Accuracy** | — | ≥ 75% | — |
-| **Deepfake Accuracy** | — | ≥ 75% | — |
+| **Overall Accuracy** | **88.3%** | ≥ 80% | ✅ PASS |
+| **Equal Error Rate (EER)** | **11.7%** | ≤ 12% | ✅ PASS |
+| **F1 Score** | **88.6%** | ≥ 80% | ✅ PASS |
+| **Genuine Accuracy** | **88.3%** | ≥ 75% | ✅ PASS |
+| **Deepfake Accuracy** | **88.4%** | ≥ 75% | ✅ PASS |
 
-*(Results populated after Kaggle GPU training completes)*
+**Optimal decision threshold**: 0.0562 (fitted to minimize EER — critical since the default argmax threshold of 0.5 causes severe bias toward Genuine class).
+
+### Confusion Matrix
+```
+                 Predicted
+              Genuine  Deepfake
+Actual Genuine  2000      264
+       Deepfake   276     2094
+```
 
 ### Experiments Summary
 
 | Experiment | Model | Features | Accuracy | EER | F1 |
 |------------|-------|----------|----------|-----|-----|
-| 1 | LCNN | LFCC (180-dim) | — | — | — |
-| 2 | RawNet2 | Raw Waveform | — | — | — |
-| 3 | ResNet34 | Mel-Spectrogram | — | — | — |
-| 4 | Ensemble | Combined | — | — | — |
+| 1 | LCNN | LFCC (180-dim) | 83.9% | 16.1% | 84.2% |
+| 2 | RawNet2 | Raw Waveform | 72.0% | 28.0% | 72.5% |
+| **3** | **ResNet34** | **Mel-Spectrogram** | **88.3%** | **11.7%** | **88.6%** |
+| 4 | Ensemble (LCNN+ResNet34+RawNet2) | Combined | 85.9% | 14.1% | 86.2% |
 
 ## Project Structure
 
 ```
-mars/
+deepfake-audio-detection/
 ├── README.md                          # This file
 ├── requirements.txt                   # Python dependencies
 ├── .gitignore
+├── PLAN.md                            # Implementation plan
 ├── src/
+│   ├── __init__.py
 │   ├── preprocess.py                  # Audio preprocessing & feature extraction
 │   ├── dataset.py                     # PyTorch Dataset classes
 │   ├── train.py                       # Training loop
 │   ├── evaluate.py                    # Evaluation utilities
 │   ├── utils.py                       # Metrics (EER, F1), plotting
 │   └── models/
+│       ├── __init__.py
 │       ├── lcnn.py                    # Light CNN architecture
 │       ├── rawnet2.py                 # RawNet2 (SincNet + ResBlocks)
-│       ├── resnet_spec.py             # ResNet34 on spectrograms
+│       ├── resnet_spec.py             # ResNet34 on spectrograms (best model)
 │       └── ensemble.py               # Voting ensemble
-├── experiments/                       # Experiment notebooks (1-4)
 ├── trained_models/
-│   ├── best_model.pth                 # Best model weights
-│   └── model_config.json             # Architecture config
+│   ├── best_model.pth                 # Best model weights (ResNet34)
+│   └── model_config.json             # Architecture config + threshold
 ├── reports/
-│   └── performance_report.md          # Full evaluation report
+│   ├── performance_report.md          # Full evaluation report
+│   ├── performance_report.pdf         # PDF report
+│   ├── all_results_optimal.json       # Optimal threshold results (all models)
+│   └── figures/                       # Report figures
 ├── app/
 │   └── streamlit_app.py               # Streamlit web application
 ├── predict.py                         # CLI inference script
