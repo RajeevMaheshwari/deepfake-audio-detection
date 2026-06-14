@@ -1,0 +1,16 @@
+data/
+trained_models/*
+!trained_models/best_model.pth
+!trained_models/model_config.json
+!trained_models/lcnn_lfcc.pth
+!trained_models/rawnet2.pth
+!trained_models/resnet34_melspec.pth
+.venv/
+.commandcode/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+access_token
+kaggle_kernels/
+Mars_open_project_2026.pdf
