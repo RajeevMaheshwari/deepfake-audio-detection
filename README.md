@@ -125,7 +125,7 @@ Trained model weights are hosted on Git LFS as well as on Hugging Face and are a
 
 ## Demo Video
 
-[Link to demo video]
+[![Demo Video](https://img.youtube.com/vi/32tlHHzQQmU/0.jpg)](https://www.youtube.com/watch?v=32tlHHzQQmU)
 
 ## Streamlit App
 
